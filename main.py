@@ -1,6 +1,5 @@
 import tkinter as tk
-
-from model.clock_model import ClockModel
+from model import ClockModel
 from view.clock_view import ClockView
 from controller.clock_controller import ClockController
 

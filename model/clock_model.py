@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from .circular_doubly_linked_list import CircularDoublyLinkedList
+from .TickBuffer import TickBuffer
 
 
 @dataclass
@@ -34,7 +34,7 @@ class ClockModel:
     ]
 
     def __init__(self) -> None:
-        self.tick_history: CircularDoublyLinkedList = CircularDoublyLinkedList(
+        self.tick_history: TickBuffer = TickBuffer(
             capacity=self.TICK_CAPACITY
         )
         self._last_recorded_second: tuple[int, int, int] | None = None

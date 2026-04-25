@@ -1,5 +1,5 @@
 from .node import Node
-from .circular_doubly_linked_list import CircularDoublyLinkedList
+from .TickBuffer import TickBuffer
 from .clock_model import ClockModel
 
-__all__ = ["Node", "CircularDoublyLinkedList", "ClockModel"]
+__all__ = ["Node", "TickBuffer", "ClockModel"]
