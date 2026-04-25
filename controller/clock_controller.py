@@ -24,6 +24,7 @@ class ClockController:
         self.root  = root
         self.model = model
         self.view  = view
+        self.view.on_time_mode_toggled = self._handle_time_mode_toggle
 
     # ── Public ────────────────────────────────────────────────────────────────
 
@@ -39,3 +40,7 @@ class ClockController:
         self.view.update(snapshot)
 
         self.root.after(self.TICK_MS, self._tick)
+
+    def _handle_time_mode_toggle(self, enabled_24h: bool) -> None:
+        """Handle switch state changes from view."""
+        self.model.set_24_hour_mode(enabled_24h)

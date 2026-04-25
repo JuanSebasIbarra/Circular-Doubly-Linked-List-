@@ -3,6 +3,7 @@
 from __future__ import annotations
 import math
 import tkinter as tk
+from typing import Callable, Optional
 
 from model.clock_model import ClockSnapshot
 
@@ -23,6 +24,9 @@ class ClockView:
     SHADOW = "#d2d3d7"
     PANEL_BG = "#f7f7f8"
     PANEL_TEXT = "#50545b"
+    SWITCH_ON = "#34c759"
+    SWITCH_OFF = "#d1d2d6"
+    SWITCH_KNOB = "#ffffff"
 
     WIDTH = 1180
     HEIGHT = 720
@@ -44,6 +48,10 @@ class ClockView:
             highlightthickness=0,
         )
         self.canvas.pack()
+
+        self.on_time_mode_toggled: Optional[Callable[[bool], None]] = None
+        self._is_24_hour_mode = False
+        self._switch_animating = False
 
         self._city_time_ids: list[int] = []
         self._draw_static_parts()
@@ -174,6 +182,49 @@ class ClockView:
             self._city_time_ids.append(item_id)
             y += 42
 
+        self.canvas.create_line(820, 545, 1100, 545, fill="#d9dade", width=2)
+        self.canvas.create_text(
+            905,
+            565,
+            text="Reloj 24 horas",
+            fill=self.PANEL_TEXT,
+            font=("Helvetica", 14, "bold"),
+        )
+
+        self._switch_x1 = 1030
+        self._switch_y1 = 548
+        self._switch_x2 = 1094
+        self._switch_y2 = 582
+        self._switch_radius = 17
+
+        self._switch_track = self._create_rounded_rect(
+            self._switch_x1,
+            self._switch_y1,
+            self._switch_x2,
+            self._switch_y2,
+            radius=self._switch_radius,
+            fill=self.SWITCH_OFF,
+            outline="",
+            tags=("mode_switch",),
+        )
+
+        knob_r = 14
+        self._switch_knob_left = self._switch_x1 + 3
+        self._switch_knob_right = self._switch_x2 - (knob_r * 2 + 3)
+        self._switch_knob_x = self._switch_knob_left
+        self._switch_knob = self.canvas.create_oval(
+            self._switch_knob_x,
+            self._switch_y1 + 3,
+            self._switch_knob_x + knob_r * 2,
+            self._switch_y2 - 3,
+            fill=self.SWITCH_KNOB,
+            outline="#d0d0d3",
+            width=1,
+            tags=("mode_switch",),
+        )
+
+        self.canvas.tag_bind("mode_switch", "<Button-1>", self._on_mode_switch_click)
+
     def _create_rounded_rect(
         self,
         x1: float,
@@ -222,6 +273,42 @@ class ClockView:
                 self.canvas.itemconfig(item_id, text=f"{city:18} {current_time}")
             else:
                 self.canvas.itemconfig(item_id, text="")
+
+    def _on_mode_switch_click(self, _event: tk.Event) -> None:
+        if self._switch_animating:
+            return
+        self._is_24_hour_mode = not self._is_24_hour_mode
+        self._animate_switch()
+        if self.on_time_mode_toggled:
+            self.on_time_mode_toggled(self._is_24_hour_mode)
+
+    def _animate_switch(self) -> None:
+        self._switch_animating = True
+        target_x = self._switch_knob_right if self._is_24_hour_mode else self._switch_knob_left
+        track_color = self.SWITCH_ON if self._is_24_hour_mode else self.SWITCH_OFF
+        self.canvas.itemconfig(self._switch_track, fill=track_color)
+
+        def step() -> None:
+            dx = target_x - self._switch_knob_x
+            if abs(dx) < 1:
+                self._move_switch_knob(target_x)
+                self._switch_animating = False
+                return
+            self._move_switch_knob(self._switch_knob_x + dx * 0.35)
+            self.root.after(16, step)
+
+        step()
+
+    def _move_switch_knob(self, new_x: float) -> None:
+        self._switch_knob_x = new_x
+        knob_r = 14
+        self.canvas.coords(
+            self._switch_knob,
+            self._switch_knob_x,
+            self._switch_y1 + 3,
+            self._switch_knob_x + knob_r * 2,
+            self._switch_y2 - 3,
+        )
 
     def _draw_hands(self, h: int, m: int, s_float: float) -> None:
         self.canvas.delete("hand")

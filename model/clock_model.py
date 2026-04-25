@@ -38,6 +38,11 @@ class ClockModel:
             capacity=self.TICK_CAPACITY
         )
         self._last_recorded_second: tuple[int, int, int] | None = None
+        self._is_24_hour_mode: bool = False
+
+    def set_24_hour_mode(self, enabled: bool) -> None:
+        """Enable or disable 24-hour display mode."""
+        self._is_24_hour_mode = enabled
 
     def tick(self) -> ClockSnapshot:
         """Record time and return a timezone-accurate frame snapshot."""
@@ -53,7 +58,7 @@ class ClockModel:
             self._last_recorded_second = current_second_key
 
         city_times = [
-            (city, datetime.now(zone).strftime("%H:%M:%S"))
+            (city, self._format_time(datetime.now(zone)))
             for city, zone in self.CAPITAL_TIMEZONES
         ]
 
@@ -62,6 +67,12 @@ class ClockModel:
             minute=m,
             second=s_float,
             national_label="Hora nacional (Bogota)",
-            national_time=bogota_now.strftime("%H:%M:%S"),
+            national_time=self._format_time(bogota_now),
             city_times=city_times,
         )
+
+    def _format_time(self, dt: datetime) -> str:
+        """Format datetime according to the selected 12h/24h mode."""
+        if self._is_24_hour_mode:
+            return dt.strftime("%H:%M:%S")
+        return dt.strftime("%I:%M:%S %p").lstrip("0")
