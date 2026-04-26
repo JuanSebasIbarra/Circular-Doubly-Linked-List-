@@ -1,4 +1,4 @@
-"""Apple-like analog clock view with smooth animation and capitals panel."""
+
 
 from __future__ import annotations
 import math
@@ -9,7 +9,6 @@ from model.clock_model import ClockSnapshot
 
 
 class ClockView:
-    """Draws and updates the analog clock interface."""
 
     APP_BG = "#e9e9eb"
     FACE_BG = "#f4f4f5"
@@ -33,6 +32,18 @@ class ClockView:
     CX = 410
     CY = 360
     RADIUS = 240
+    CAPITAL_OPTIONS = [
+        "Bogota",
+        "Lima",
+        "Quito",
+        "Ciudad de Mexico",
+        "Madrid",
+        "Buenos Aires",
+        "Nueva York",
+        "Londres",
+        "Tokyo",
+        "Sydney",
+    ]
 
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
@@ -50,8 +61,11 @@ class ClockView:
         self.canvas.pack()
 
         self.on_time_mode_toggled: Optional[Callable[[bool], None]] = None
+        self.on_timezones_changed: Optional[Callable[[list[str]], None]] = None
         self._is_24_hour_mode = False
         self._switch_animating = False
+        self._active_capitals: list[str] = self.CAPITAL_OPTIONS[:5]
+        self._capital_modal: Optional[tk.Toplevel] = None
 
         self._city_time_ids: list[int] = []
         self._draw_static_parts()
@@ -170,6 +184,27 @@ class ClockView:
             font=("Helvetica", 16, "bold"),
         )
 
+        self._plus_btn_bg = self._create_rounded_rect(
+            1078,
+            300,
+            1108,
+            330,
+            radius=10,
+            fill=self.APP_BG,
+            outline="#d7d8dc",
+            width=1,
+            tags=("capital_plus",),
+        )
+        self._plus_btn_text = self.canvas.create_text(
+            1093,
+            315,
+            text="+",
+            fill=self.PANEL_TEXT,
+            font=("Helvetica", 18, "bold"),
+            tags=("capital_plus",),
+        )
+        self.canvas.tag_bind("capital_plus", "<Button-1>", self._open_capitals_modal)
+
         y = 350
         for _ in range(5):
             item_id = self.canvas.create_text(
@@ -267,12 +302,121 @@ class ClockView:
         self.canvas.itemconfig(self._national_label_id, text=snapshot.national_label)
         self.canvas.itemconfig(self._national_time_id, text=snapshot.national_time)
 
+        self._active_capitals = [city for city, _ in snapshot.city_times]
+
         for idx, item_id in enumerate(self._city_time_ids):
             if idx < len(snapshot.city_times):
                 city, current_time = snapshot.city_times[idx]
                 self.canvas.itemconfig(item_id, text=f"{city:18} {current_time}")
             else:
                 self.canvas.itemconfig(item_id, text="")
+
+    def _open_capitals_modal(self, _event: tk.Event) -> None:
+        if self._capital_modal and self._capital_modal.winfo_exists():
+            self._capital_modal.lift()
+            self._capital_modal.focus_force()
+            return
+
+        modal = tk.Toplevel(self.root)
+        modal.title("Seleccionar capitales")
+        modal.configure(bg=self.APP_BG)
+        modal.resizable(False, False)
+        modal.transient(self.root)
+        modal.update_idletasks()
+        modal.deiconify()
+        modal.after_idle(modal.grab_set)
+        self._capital_modal = modal
+
+        container = tk.Frame(modal, bg=self.PANEL_BG, highlightbackground="#e0e1e4", highlightthickness=1)
+        container.pack(padx=16, pady=16, fill="both", expand=True)
+
+        tk.Label(
+            container,
+            text="Elige hasta 5 capitales",
+            bg=self.PANEL_BG,
+            fg=self.PANEL_TEXT,
+            font=("Helvetica", 12, "bold"),
+        ).pack(anchor="w", padx=12, pady=(12, 8))
+
+        feedback = tk.Label(
+            container,
+            text="",
+            bg=self.PANEL_BG,
+            fg="#d94f4f",
+            font=("Helvetica", 10),
+        )
+        feedback.pack(anchor="w", padx=12, pady=(0, 6))
+
+        checks_frame = tk.Frame(container, bg=self.PANEL_BG)
+        checks_frame.pack(padx=12, pady=(0, 8), fill="both", expand=True)
+
+        vars_by_city: dict[str, tk.BooleanVar] = {}
+        initially_active = set(self._active_capitals)
+        for city in self.CAPITAL_OPTIONS:
+            var = tk.BooleanVar(value=city in initially_active)
+            vars_by_city[city] = var
+
+            def _on_toggle(current_city: str = city) -> None:
+                selected_count = sum(1 for v in vars_by_city.values() if v.get())
+                if selected_count > 5:
+                    vars_by_city[current_city].set(False)
+                    feedback.config(text="Solo puedes seleccionar maximo 5 capitales.")
+                else:
+                    feedback.config(text="")
+
+            check = tk.Checkbutton(
+                checks_frame,
+                text=city,
+                variable=var,
+                command=_on_toggle,
+                bg=self.PANEL_BG,
+                fg=self.PANEL_TEXT,
+                activebackground=self.PANEL_BG,
+                activeforeground=self.PANEL_TEXT,
+                selectcolor=self.APP_BG,
+                font=("Helvetica", 11),
+                anchor="w",
+            )
+            check.pack(fill="x", anchor="w", pady=2)
+
+        actions = tk.Frame(container, bg=self.PANEL_BG)
+        actions.pack(fill="x", padx=12, pady=(4, 12))
+
+        tk.Button(
+            actions,
+            text="Cancelar",
+            command=modal.destroy,
+            bg=self.APP_BG,
+            fg=self.PANEL_TEXT,
+            relief="flat",
+            activebackground=self.APP_BG,
+            activeforeground=self.PANEL_TEXT,
+            font=("Helvetica", 10),
+            cursor="hand2",
+        ).pack(side="right", padx=(8, 0))
+
+        def _save() -> None:
+            selected = [city for city in self.CAPITAL_OPTIONS if vars_by_city[city].get()][:5]
+            if not selected:
+                feedback.config(text="Selecciona al menos una capital.")
+                return
+            if self.on_timezones_changed:
+                self.on_timezones_changed(selected)
+            modal.destroy()
+
+        tk.Button(
+            actions,
+            text="Guardar",
+            command=_save,
+            bg=self.PANEL_TEXT,
+            fg="#ffffff",
+            relief="flat",
+            activebackground="#3f434a",
+            activeforeground="#ffffff",
+            font=("Helvetica", 10, "bold"),
+            cursor="hand2",
+            padx=14,
+        ).pack(side="right")
 
     def _on_mode_switch_click(self, _event: tk.Event) -> None:
         if self._switch_animating:

@@ -171,7 +171,7 @@ class TickBuffer:
 
     # ── 9. get_laps ───────────────────────────────────────────────────────────
     def get_laps(self) -> list[Node]:
-        """Return all nodes labelled 'lap', in insertion order."""
+  
         return [n for n in self.traverse_forward() if n.label == "lap"]
 
     # ── 10. get_alarms ────────────────────────────────────────────────────────
@@ -181,13 +181,13 @@ class TickBuffer:
 
     # ── 12. clear ─────────────────────────────────────────────────────────────
     def clear(self) -> None:
-        """Remove all nodes from the list."""
+
         self._head = None
         self._size = 0
 
     # ── 13. evict_oldest (internal) ───────────────────────────────────────────
     def _evict_oldest(self) -> None:
-        """Remove the head (oldest) node. O(1)."""
+
         if self._size <= 1:
             self.clear()
             return

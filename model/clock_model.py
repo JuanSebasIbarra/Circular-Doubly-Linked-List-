@@ -10,7 +10,7 @@ from .TickBuffer import TickBuffer
 
 @dataclass
 class ClockSnapshot:
-    """Immutable value object passed from Model to View each frame."""
+
     hour: int
     minute: int
     second: float
@@ -20,18 +20,25 @@ class ClockSnapshot:
 
 
 class ClockModel:
-    """Encapsulates clock state with timezone-accurate and smooth time updates."""
+
 
     TICK_CAPACITY = 3600
     NATIONAL_ZONE = ZoneInfo("America/Bogota")
 
-    CAPITAL_TIMEZONES: list[tuple[str, ZoneInfo]] = [
-        ("Bogota", ZoneInfo("America/Bogota")),
-        ("Lima", ZoneInfo("America/Lima")),
-        ("Quito", ZoneInfo("America/Guayaquil")),
-        ("Ciudad de Mexico", ZoneInfo("America/Mexico_City")),
-        ("Madrid", ZoneInfo("Europe/Madrid")),
+    ALL_TIMEZONES: list[tuple[str, ZoneInfo]] = [
+        ("Bogota",               ZoneInfo("America/Bogota")),
+        ("Lima",                 ZoneInfo("America/Lima")),
+        ("Quito",                ZoneInfo("America/Guayaquil")),
+        ("Ciudad de Mexico",     ZoneInfo("America/Mexico_City")),
+        ("Madrid",               ZoneInfo("Europe/Madrid")),
+        ("Buenos Aires",         ZoneInfo("America/Argentina/Buenos_Aires")),
+        ("Nueva York",           ZoneInfo("America/New_York")),
+        ("Londres",              ZoneInfo("Europe/London")),
+        ("Tokyo",                ZoneInfo("Asia/Tokyo")),
+        ("Sydney",               ZoneInfo("Australia/Sydney")),
     ]
+
+    CAPITAL_TIMEZONES: list[tuple[str, ZoneInfo]] = ALL_TIMEZONES[:5]
 
     def __init__(self) -> None:
         self.tick_history: TickBuffer = TickBuffer(
@@ -43,6 +50,22 @@ class ClockModel:
     def set_24_hour_mode(self, enabled: bool) -> None:
         """Enable or disable 24-hour display mode."""
         self._is_24_hour_mode = enabled
+
+    def set_active_timezones(self, selected: list[str]) -> None:
+        """Replace visible capitals with a user-selected subset (max 5)."""
+        if not selected:
+            self.CAPITAL_TIMEZONES = self.ALL_TIMEZONES[:5]
+            return
+
+        selected_limited = selected[:5]
+        selected_set = set(selected_limited)
+        filtered = [
+            (name, zone)
+            for name, zone in self.ALL_TIMEZONES
+            if name in selected_set
+        ]
+
+        self.CAPITAL_TIMEZONES = filtered or self.ALL_TIMEZONES[:5]
 
     def tick(self) -> ClockSnapshot:
         """Record time and return a timezone-accurate frame snapshot."""
