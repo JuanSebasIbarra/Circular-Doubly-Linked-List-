@@ -1,4 +1,3 @@
-"""Controller that coordinates model updates and view rendering."""
 
 from __future__ import annotations
 import tkinter as tk
@@ -8,15 +7,7 @@ from view.clock_view  import ClockView
 
 
 class ClockController:
-    """
-    MVC Controller — the single point of coupling between Model and View.
 
-    Parameters
-    ----------
-    root  : tk.Tk      – Tkinter root window owned by main.py
-    model : ClockModel – business logic / CDLL storage
-    view  : ClockView  – all Tkinter widgets and drawing
-    """
 
     TICK_MS = 16
 
@@ -25,8 +16,8 @@ class ClockController:
         self.model = model
         self.view  = view
         self.view.on_time_mode_toggled = self._handle_time_mode_toggle
+        self.view.on_timezones_changed = self._handle_timezones_changed
 
-    # ── Public ────────────────────────────────────────────────────────────────
 
     def start(self) -> None:
         """Begin the clock loop. Call once after constructing all MVC parts."""
@@ -44,3 +35,7 @@ class ClockController:
     def _handle_time_mode_toggle(self, enabled_24h: bool) -> None:
         """Handle switch state changes from view."""
         self.model.set_24_hour_mode(enabled_24h)
+
+    def _handle_timezones_changed(self, selected: list[str]) -> None:
+        """Handle selected capitals sent by the modal selector."""
+        self.model.set_active_timezones(selected)
